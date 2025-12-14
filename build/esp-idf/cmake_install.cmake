@@ -669,6 +669,31 @@ endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
+  include("/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/wifi_manager/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/espressif__mqtt/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/mqtt_manager/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/touch_bsp/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
+  include("/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/read_lcd_id_bsp/cmake_install.cmake")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  # Include the install script for the subdirectory.
   include("/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/espressif__cmake_utilities/cmake_install.cmake")
 endif()
 
@@ -685,16 +710,6 @@ endif()
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for the subdirectory.
   include("/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/main/cmake_install.cmake")
-endif()
-
-if(NOT CMAKE_INSTALL_LOCAL_ONLY)
-  # Include the install script for the subdirectory.
-  include("/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/read_lcd_id_bsp/cmake_install.cmake")
-endif()
-
-if(NOT CMAKE_INSTALL_LOCAL_ONLY)
-  # Include the install script for the subdirectory.
-  include("/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/touch_bsp/cmake_install.cmake")
 endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT

@@ -1,0 +1,6 @@
+Command: cmake -G Ninja -B /Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build -DPYTHON_DEPS_CHECKED=1 -DPYTHON=/Users/Peter/.espressif/python_env/idf6.1_py3.14_env/bin/python -DESP_PLATFORM=1 -DCCACHE_ENABLE=False /Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo
+-- Component directory /Users/Peter/esp/esp-idf/components/mqtt does not contain a CMakeLists.txt file. No component will be added
+-- Minimal build - OFF
+-- Building ESP-IDF components for target esp32s3
+Invalid field "dependencies:idf::mqtt": Invalid component name
+-- Configuring incomplete, errors occurred!

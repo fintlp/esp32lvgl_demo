@@ -1,12 +1,20 @@
 
 #include <stdio.h>
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
 #include "driver/gpio.h"
 #include "driver/i2c.h"
 #include "driver/spi_master.h"
+#include "esp_heap_caps.h"
 #include "esp_timer.h"
+#include "esp_netif_ip_addr.h"
+#include "esp_netif.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_vendor.h"
 #include "esp_lcd_panel_ops.h"
@@ -18,11 +26,111 @@
 #include "esp_lcd_sh8601.h"
 #include "touch_bsp.h"
 #include "read_lcd_id_bsp.h"
+#include "wifi_manager.h"
+#include "mqtt_manager.h"
 static const char *TAG = "example";
 static SemaphoreHandle_t lvgl_mux = NULL;
 static lv_obj_t * scr1 = NULL;
 static lv_obj_t * scr2 = NULL;
+static lv_obj_t * scr_settings = NULL;
+static lv_obj_t *temperature_value_label = NULL;
+static lv_obj_t *wifi_status_value_label = NULL;
+static lv_obj_t *mqtt_status_value_label = NULL;
+static lv_obj_t *ssid_input = NULL;
+static lv_obj_t *password_input = NULL;
+static lv_obj_t *settings_keyboard = NULL;
+static QueueHandle_t ui_event_queue = NULL;
+static lv_obj_t *registered_screens[3] = {0};
+static size_t registered_screen_count = 0;
 static bool is_playing = false;
+static lv_obj_t *current_screen = NULL;
+
+#define MQTT_BUTTON_MEDIA_PLAY       "media/play"
+#define MQTT_BUTTON_MEDIA_VOLUME_UP  "media/volume_up"
+#define MQTT_BUTTON_MEDIA_VOLUME_DOWN "media/volume_down"
+#define MQTT_BUTTON_MEDIA_PREV       "media/previous"
+#define MQTT_BUTTON_MEDIA_NEXT       "media/next"
+#define MQTT_BUTTON_HVAC_TEMP_UP     "hvac/temp_up"
+#define MQTT_BUTTON_HVAC_TEMP_DOWN   "hvac/temp_down"
+#define MQTT_BUTTON_HVAC_POWER       "hvac/power"
+#define MQTT_BUTTON_HVAC_INTENSITY   "hvac/intensity"
+
+typedef enum {
+    UI_EVENT_TEMPERATURE,
+    UI_EVENT_WIFI_STATUS,
+    UI_EVENT_MQTT_STATUS,
+} ui_event_type_t;
+
+typedef struct {
+    ui_event_type_t type;
+    float temperature;
+    char message[64];
+} ui_event_t;
+
+static void gesture_event_cb(lv_event_t * e);
+
+static void register_screen(lv_obj_t *screen)
+{
+    if (registered_screen_count < (sizeof(registered_screens) / sizeof(registered_screens[0]))) {
+        registered_screens[registered_screen_count++] = screen;
+        lv_obj_add_event_cb(screen, gesture_event_cb, LV_EVENT_GESTURE, NULL);
+    }
+}
+
+static size_t get_screen_index(lv_obj_t *screen)
+{
+    for (size_t i = 0; i < registered_screen_count; ++i) {
+        if (registered_screens[i] == screen) {
+            return i;
+        }
+    }
+    return 0;
+}
+
+static void enqueue_ui_event(ui_event_type_t type, const char *message, float temperature)
+{
+    if (!ui_event_queue) {
+        return;
+    }
+    ui_event_t evt = {
+        .type = type,
+        .temperature = temperature,
+    };
+    if (message) {
+        strlcpy(evt.message, message, sizeof(evt.message));
+    } else {
+        evt.message[0] = '\0';
+    }
+    xQueueSend(ui_event_queue, &evt, 0);
+}
+
+static void handle_ui_event(const ui_event_t *event)
+{
+    if (!event) {
+        return;
+    }
+    char buffer[64];
+    switch (event->type) {
+    case UI_EVENT_TEMPERATURE:
+        if (temperature_value_label) {
+            snprintf(buffer, sizeof(buffer), "%.1f°C", event->temperature);
+            lv_label_set_text(temperature_value_label, buffer);
+        }
+        break;
+    case UI_EVENT_WIFI_STATUS:
+        if (wifi_status_value_label) {
+            lv_label_set_text(wifi_status_value_label, event->message);
+        }
+        break;
+    case UI_EVENT_MQTT_STATUS:
+        if (mqtt_status_value_label) {
+            lv_label_set_text(mqtt_status_value_label, event->message);
+        }
+        break;
+    default:
+        break;
+    }
+}
 
 #define LCD_HOST    SPI2_HOST
 
@@ -183,6 +291,12 @@ static void example_lvgl_port_task(void *arg)
         // Lock the mutex due to the LVGL APIs are not thread-safe
         if (example_lvgl_lock(-1)) {
             task_delay_ms = lv_timer_handler();
+            if (ui_event_queue) {
+                ui_event_t evt;
+                while (xQueueReceive(ui_event_queue, &evt, 0) == pdTRUE) {
+                    handle_ui_event(&evt);
+                }
+            }
             // Release the mutex
             example_lvgl_unlock();
         }
@@ -198,10 +312,13 @@ static void example_lvgl_port_task(void *arg)
 static void gesture_event_cb(lv_event_t * e) {
     lv_obj_t * scr = lv_event_get_target(e);
     lv_dir_t dir = lv_indev_get_gesture_dir(lv_indev_get_act());
-    if (scr == scr1 && dir == LV_DIR_RIGHT) {
-        lv_scr_load(scr2);
-    } else if (scr == scr2 && dir == LV_DIR_LEFT) {
-        lv_scr_load(scr1);
+    size_t index = get_screen_index(scr);
+    if (dir == LV_DIR_LEFT && index + 1 < registered_screen_count) {
+        current_screen = registered_screens[index + 1];
+        lv_scr_load(current_screen);
+    } else if (dir == LV_DIR_RIGHT && index > 0) {
+        current_screen = registered_screens[index - 1];
+        lv_scr_load(current_screen);
     }
 }
 
@@ -211,15 +328,134 @@ static void play_pause_event_cb(lv_event_t * e) {
     if (is_playing) {
         lv_label_set_text(label, "Stop");
         is_playing = false;
+        mqtt_manager_publish_button_event(MQTT_BUTTON_MEDIA_PLAY, "stop");
     } else {
         lv_label_set_text(label, "Play");
         is_playing = true;
+        mqtt_manager_publish_button_event(MQTT_BUTTON_MEDIA_PLAY, "play");
     }
+}
+
+static void action_button_event_cb(lv_event_t * e)
+{
+    const char *button_id = (const char *)lv_event_get_user_data(e);
+    if (button_id) {
+        mqtt_manager_publish_button_event(button_id, "pressed");
+    }
+}
+
+static void connect_button_event_cb(lv_event_t * e)
+{
+    (void)e;
+    if (!ssid_input || !password_input) {
+        return;
+    }
+    const char *ssid = lv_textarea_get_text(ssid_input);
+    const char *password = lv_textarea_get_text(password_input);
+    wifi_manager_credentials_t creds = { 0 };
+    if (ssid) {
+        strncpy(creds.ssid, ssid, WIFI_MANAGER_MAX_SSID_LEN);
+        creds.ssid[WIFI_MANAGER_MAX_SSID_LEN] = '\0';
+    }
+    if (password) {
+        strncpy(creds.password, password, WIFI_MANAGER_MAX_PASSWORD_LEN);
+        creds.password[WIFI_MANAGER_MAX_PASSWORD_LEN] = '\0';
+    }
+    if (creds.ssid[0] == '\0') {
+        enqueue_ui_event(UI_EVENT_WIFI_STATUS, "SSID is required", 0);
+        return;
+    }
+    if (wifi_manager_set_credentials(&creds, true) == ESP_OK) {
+        enqueue_ui_event(UI_EVENT_WIFI_STATUS, "Connecting...", 0);
+        wifi_manager_connect();
+    } else {
+        enqueue_ui_event(UI_EVENT_WIFI_STATUS, "Invalid credentials", 0);
+    }
+}
+
+static void text_area_event_cb(lv_event_t * e)
+{
+    if (!settings_keyboard) {
+        return;
+    }
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_FOCUSED) {
+        lv_keyboard_set_textarea(settings_keyboard, lv_event_get_target(e));
+        lv_obj_clear_flag(settings_keyboard, LV_OBJ_FLAG_HIDDEN);
+    } else if (code == LV_EVENT_DEFOCUSED) {
+        lv_obj_add_flag(settings_keyboard, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+static void keyboard_event_cb(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    if (code == LV_EVENT_READY || code == LV_EVENT_CANCEL) {
+        lv_obj_add_flag(settings_keyboard, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+static void app_wifi_event_handler(wifi_manager_event_t event, void *ctx, const void *event_data)
+{
+    (void)ctx;
+    char message[64] = { 0 };
+    switch (event) {
+    case WIFI_MANAGER_EVENT_STARTED:
+        snprintf(message, sizeof(message), "Wi-Fi started");
+        break;
+    case WIFI_MANAGER_EVENT_CONNECTED:
+        snprintf(message, sizeof(message), "Wi-Fi connected");
+        break;
+    case WIFI_MANAGER_EVENT_DISCONNECTED:
+        snprintf(message, sizeof(message), "Wi-Fi disconnected");
+        break;
+    case WIFI_MANAGER_EVENT_GOT_IP: {
+        const wifi_manager_ip_info_t *info = (const wifi_manager_ip_info_t *)event_data;
+        char ip_str[32] = { 0 };
+        if (info) {
+            esp_ip4addr_ntoa(&info->ip, ip_str, sizeof(ip_str));
+            snprintf(message, sizeof(message), "IP: %s", ip_str);
+        }
+        break;
+    }
+    default:
+        break;
+    }
+    if (message[0] != '\0') {
+        enqueue_ui_event(UI_EVENT_WIFI_STATUS, message, 0);
+    }
+}
+
+static void mqtt_message_handler(const char *topic, const char *payload, void *ctx)
+{
+    (void)topic;
+    (void)ctx;
+    float value = strtof(payload ? payload : "0", NULL);
+    enqueue_ui_event(UI_EVENT_TEMPERATURE, NULL, value);
+}
+
+static void mqtt_status_handler(bool connected, void *ctx)
+{
+    (void)ctx;
+    enqueue_ui_event(UI_EVENT_MQTT_STATUS,
+                     connected ? "MQTT connected" : "MQTT disconnected",
+                     0);
 }
 
 void app_main(void)
 {
     READ_LCD_ID = read_lcd_id();
+    ui_event_queue = xQueueCreate(10, sizeof(ui_event_t));
+    assert(ui_event_queue);
+
+    ESP_ERROR_CHECK(wifi_manager_init(NULL));
+    ESP_ERROR_CHECK(wifi_manager_register_event_handler(app_wifi_event_handler, NULL));
+    mqtt_manager_config_t mqtt_cfg = { 0 };
+    ESP_ERROR_CHECK(mqtt_manager_init(&mqtt_cfg,
+                                      mqtt_message_handler,
+                                      NULL,
+                                      mqtt_status_handler,
+                                      NULL));
     static lv_disp_draw_buf_t disp_buf; // contains internal graphic buffer(s) called draw buffer(s)
     static lv_disp_drv_t disp_drv;      // contains callback functions
 
@@ -281,10 +517,23 @@ void app_main(void)
     lv_init();
     // alloc draw buffers used by LVGL
     // it's recommended to choose the size of the draw buffer(s) to be at least 1/10 screen sized
-    lv_color_t *buf1 = heap_caps_malloc(EXAMPLE_LCD_H_RES * EXAMPLE_LVGL_BUF_HEIGHT * sizeof(lv_color_t), MALLOC_CAP_DMA);
-    assert(buf1);
-    lv_color_t *buf2 = heap_caps_malloc(EXAMPLE_LCD_H_RES * EXAMPLE_LVGL_BUF_HEIGHT * sizeof(lv_color_t), MALLOC_CAP_DMA);
-    assert(buf2);
+    size_t lvgl_buffer_size = EXAMPLE_LCD_H_RES * EXAMPLE_LVGL_BUF_HEIGHT * sizeof(lv_color_t);
+    lv_color_t *buf1 = heap_caps_malloc(lvgl_buffer_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_DMA);
+    if (!buf1) {
+        buf1 = heap_caps_malloc(lvgl_buffer_size, MALLOC_CAP_DMA);
+    }
+    if (!buf1) {
+        ESP_LOGE(TAG, "Failed to allocate LVGL buffer 1 (%zu bytes)", lvgl_buffer_size);
+        abort();
+    }
+    lv_color_t *buf2 = heap_caps_malloc(lvgl_buffer_size, MALLOC_CAP_SPIRAM | MALLOC_CAP_DMA);
+    if (!buf2) {
+        buf2 = heap_caps_malloc(lvgl_buffer_size, MALLOC_CAP_DMA);
+    }
+    if (!buf2) {
+        ESP_LOGE(TAG, "Failed to allocate LVGL buffer 2 (%zu bytes)", lvgl_buffer_size);
+        abort();
+    }
     // initialize LVGL draw buffers
     lv_disp_draw_buf_init(&disp_buf, buf1, buf2, EXAMPLE_LCD_H_RES * EXAMPLE_LVGL_BUF_HEIGHT);
 
@@ -328,12 +577,19 @@ void app_main(void)
     // Lock the mutex due to the LVGL APIs are not thread-safe
     if (example_lvgl_lock(-1)) {
         
-        // Create two screens for swipe navigation
+        // Create three screens for swipe navigation
         scr1 = lv_obj_create(NULL); // First screen
         scr2 = lv_obj_create(NULL); // Second screen (steering wheel style)
+        scr_settings = lv_obj_create(NULL); // Third screen for settings
+
+        registered_screen_count = 0;
+        register_screen(scr1);
+        register_screen(scr2);
+        register_screen(scr_settings);
 
         lv_obj_set_style_bg_color(scr1, lv_color_hex(0x000000), 0); // Black background
         lv_obj_set_style_bg_color(scr2, lv_color_hex(0x000000), 0); // Black background
+        lv_obj_set_style_bg_color(scr_settings, lv_color_hex(0x000000), 0);
 
         // Add music-themed background to screen 1
         lv_obj_t * music_bg1 = lv_label_create(scr1);
@@ -380,6 +636,7 @@ void app_main(void)
         lv_label_set_text(label_top1, "Volume +");
         lv_obj_center(label_top1);
         lv_obj_set_style_text_font(label_top1, &lv_font_montserrat_16, 0);
+        lv_obj_add_event_cb(btn_top1, action_button_event_cb, LV_EVENT_CLICKED, (void *)MQTT_BUTTON_MEDIA_VOLUME_UP);
 
         // Bottom button: Volume -
         lv_obj_t * btn_bottom1 = lv_btn_create(scr1);
@@ -389,6 +646,7 @@ void app_main(void)
         lv_label_set_text(label_bottom1, "Volume -");
         lv_obj_center(label_bottom1);
         lv_obj_set_style_text_font(label_bottom1, &lv_font_montserrat_16, 0);
+        lv_obj_add_event_cb(btn_bottom1, action_button_event_cb, LV_EVENT_CLICKED, (void *)MQTT_BUTTON_MEDIA_VOLUME_DOWN);
 
         // Left button: <<
         lv_obj_t * btn_left1 = lv_btn_create(scr1);
@@ -398,6 +656,7 @@ void app_main(void)
         lv_label_set_text(label_left1, "<<");
         lv_obj_center(label_left1);
         lv_obj_set_style_text_font(label_left1, &lv_font_montserrat_16, 0);
+        lv_obj_add_event_cb(btn_left1, action_button_event_cb, LV_EVENT_CLICKED, (void *)MQTT_BUTTON_MEDIA_PREV);
 
         // Right button: >>
         lv_obj_t * btn_right1 = lv_btn_create(scr1);
@@ -407,6 +666,7 @@ void app_main(void)
         lv_label_set_text(label_right1, ">>");
         lv_obj_center(label_right1);
         lv_obj_set_style_text_font(label_right1, &lv_font_montserrat_16, 0);
+        lv_obj_add_event_cb(btn_right1, action_button_event_cb, LV_EVENT_CLICKED, (void *)MQTT_BUTTON_MEDIA_NEXT);
 
         // Second screen: Steering wheel style
         // Center button for temperature
@@ -414,9 +674,10 @@ void app_main(void)
         lv_obj_set_size(btn_center2, 120, 80);
         lv_obj_align(btn_center2, LV_ALIGN_CENTER, 0, 0);
         lv_obj_t * label_center2 = lv_label_create(btn_center2);
-        lv_label_set_text(label_center2, "25°C");
+        lv_label_set_text(label_center2, "--");
         lv_obj_center(label_center2);
         lv_obj_set_style_text_font(label_center2, &lv_font_montserrat_16, 0);
+        temperature_value_label = label_center2;
 
         // Top button: +
         lv_obj_t * btn_top2 = lv_btn_create(scr2);
@@ -426,6 +687,7 @@ void app_main(void)
         lv_label_set_text(label_top2, "+");
         lv_obj_center(label_top2);
         lv_obj_set_style_text_font(label_top2, &lv_font_montserrat_16, 0);
+        lv_obj_add_event_cb(btn_top2, action_button_event_cb, LV_EVENT_CLICKED, (void *)MQTT_BUTTON_HVAC_TEMP_UP);
 
         // Bottom button: -
         lv_obj_t * btn_bottom2 = lv_btn_create(scr2);
@@ -435,6 +697,7 @@ void app_main(void)
         lv_label_set_text(label_bottom2, "-");
         lv_obj_center(label_bottom2);
         lv_obj_set_style_text_font(label_bottom2, &lv_font_montserrat_16, 0);
+        lv_obj_add_event_cb(btn_bottom2, action_button_event_cb, LV_EVENT_CLICKED, (void *)MQTT_BUTTON_HVAC_TEMP_DOWN);
 
         // Right button: Intensity
         lv_obj_t * btn_right2 = lv_btn_create(scr2);
@@ -444,6 +707,7 @@ void app_main(void)
         lv_label_set_text(label_right2, "Intensity");
         lv_obj_center(label_right2);
         lv_obj_set_style_text_font(label_right2, &lv_font_montserrat_16, 0);
+        lv_obj_add_event_cb(btn_right2, action_button_event_cb, LV_EVENT_CLICKED, (void *)MQTT_BUTTON_HVAC_INTENSITY);
 
         // Left button: (I) power
         lv_obj_t * btn_left2 = lv_btn_create(scr2);
@@ -453,12 +717,74 @@ void app_main(void)
         lv_label_set_text(label_left2, "(I)");
         lv_obj_center(label_left2);
         lv_obj_set_style_text_font(label_left2, &lv_font_montserrat_16, 0);
+        lv_obj_add_event_cb(btn_left2, action_button_event_cb, LV_EVENT_CLICKED, (void *)MQTT_BUTTON_HVAC_POWER);
 
-        // Add gesture events to screens
-        lv_obj_add_event_cb(scr1, gesture_event_cb, LV_EVENT_GESTURE, NULL);
-        lv_obj_add_event_cb(scr2, gesture_event_cb, LV_EVENT_GESTURE, NULL);
+        // Third screen: Wi-Fi & MQTT settings
+        lv_obj_t * settings_title = lv_label_create(scr_settings);
+        lv_label_set_text(settings_title, "Wi-Fi & MQTT");
+        lv_obj_set_style_text_color(settings_title, lv_color_white(), 0);
+        lv_obj_set_style_text_font(settings_title, &lv_font_montserrat_16, 0);
+        lv_obj_align(settings_title, LV_ALIGN_TOP_MID, 0, 20);
+
+        ssid_input = lv_textarea_create(scr_settings);
+        lv_obj_set_size(ssid_input, 280, 50);
+        lv_obj_align(ssid_input, LV_ALIGN_TOP_MID, 0, 60);
+        lv_textarea_set_placeholder_text(ssid_input, "SSID");
+        lv_textarea_set_max_length(ssid_input, WIFI_MANAGER_MAX_SSID_LEN);
+        lv_textarea_set_one_line(ssid_input, true);
+        lv_obj_add_event_cb(ssid_input, text_area_event_cb, LV_EVENT_ALL, NULL);
+
+        password_input = lv_textarea_create(scr_settings);
+        lv_obj_set_size(password_input, 280, 50);
+        lv_obj_align(password_input, LV_ALIGN_TOP_MID, 0, 130);
+        lv_textarea_set_placeholder_text(password_input, "Password");
+        lv_textarea_set_max_length(password_input, WIFI_MANAGER_MAX_PASSWORD_LEN);
+        lv_textarea_set_one_line(password_input, true);
+        lv_textarea_set_password_mode(password_input, true);
+        lv_obj_add_event_cb(password_input, text_area_event_cb, LV_EVENT_ALL, NULL);
+
+        lv_obj_t * connect_btn = lv_btn_create(scr_settings);
+        lv_obj_set_size(connect_btn, 160, 50);
+        lv_obj_align(connect_btn, LV_ALIGN_TOP_MID, 0, 200);
+        lv_obj_add_event_cb(connect_btn, connect_button_event_cb, LV_EVENT_CLICKED, NULL);
+        lv_obj_t * connect_label = lv_label_create(connect_btn);
+        lv_label_set_text(connect_label, "Connect");
+        lv_obj_center(connect_label);
+
+        const wifi_manager_credentials_t *stored_creds = wifi_manager_get_credentials();
+        if (stored_creds) {
+            lv_textarea_set_text(ssid_input, stored_creds->ssid);
+            lv_textarea_set_text(password_input, stored_creds->password);
+        }
+
+        lv_obj_t * wifi_status_title = lv_label_create(scr_settings);
+        lv_label_set_text(wifi_status_title, "Wi-Fi Status:");
+        lv_obj_set_style_text_color(wifi_status_title, lv_color_white(), 0);
+        lv_obj_align(wifi_status_title, LV_ALIGN_BOTTOM_MID, 0, -120);
+
+        wifi_status_value_label = lv_label_create(scr_settings);
+        lv_label_set_text(wifi_status_value_label, "Not connected");
+        lv_obj_set_style_text_color(wifi_status_value_label, lv_color_white(), 0);
+        lv_obj_align_to(wifi_status_value_label, wifi_status_title, LV_ALIGN_OUT_BOTTOM_MID, 0, 5);
+
+        lv_obj_t * mqtt_status_title = lv_label_create(scr_settings);
+        lv_label_set_text(mqtt_status_title, "MQTT Status:");
+        lv_obj_set_style_text_color(mqtt_status_title, lv_color_white(), 0);
+        lv_obj_align(mqtt_status_title, LV_ALIGN_BOTTOM_MID, 0, -60);
+
+        mqtt_status_value_label = lv_label_create(scr_settings);
+        lv_label_set_text(mqtt_status_value_label, "Waiting for Wi-Fi");
+        lv_obj_set_style_text_color(mqtt_status_value_label, lv_color_white(), 0);
+        lv_obj_align_to(mqtt_status_value_label, mqtt_status_title, LV_ALIGN_OUT_BOTTOM_MID, 0, 5);
+
+        settings_keyboard = lv_keyboard_create(scr_settings);
+        lv_obj_add_flag(settings_keyboard, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_align(settings_keyboard, LV_ALIGN_BOTTOM_MID, 0, 0);
+        lv_obj_add_event_cb(settings_keyboard, keyboard_event_cb, LV_EVENT_ALL, NULL);
+        lv_keyboard_set_textarea(settings_keyboard, NULL);
 
         // Load first screen initially
+        current_screen = scr1;
         lv_scr_load(scr1);
 
         // Release the mutex

@@ -144,12 +144,15 @@
 		"/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/rt/cmake_install.cmake",
 		"/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/spiffs/cmake_install.cmake",
 		"/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/ulp/cmake_install.cmake",
+		"/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/wifi_manager/cmake_install.cmake",
+		"/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/espressif__mqtt/cmake_install.cmake",
+		"/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/mqtt_manager/cmake_install.cmake",
+		"/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/touch_bsp/cmake_install.cmake",
+		"/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/read_lcd_id_bsp/cmake_install.cmake",
 		"/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/espressif__cmake_utilities/cmake_install.cmake",
 		"/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/espressif__esp_lcd_sh8601/cmake_install.cmake",
 		"/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/lvgl/cmake_install.cmake",
-		"/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/main/cmake_install.cmake",
-		"/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/read_lcd_id_bsp/cmake_install.cmake",
-		"/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/touch_bsp/cmake_install.cmake"
+		"/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/main/cmake_install.cmake"
 	],
 	"Parallel" : false
 }

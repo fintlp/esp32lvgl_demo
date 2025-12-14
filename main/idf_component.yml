@@ -10,3 +10,6 @@ dependencies:
   lvgl/lvgl:
     version: "^8"
     public: true
+
+  espressif/mqtt:
+    version: "*"

@@ -25,6 +25,17 @@ dependencies:
       registry_url: https://components.espressif.com/
       type: service
     version: 2.0.1
+  espressif/mqtt:
+    component_hash: 
+      ffdad5659706b4dc14bc63f8eb73ef765efa015bf7e9adf71c813d52a2dc9342
+    dependencies:
+    - name: idf
+      require: private
+      version: '>=5.3'
+    source:
+      registry_url: https://components.espressif.com/
+      type: service
+    version: 1.0.0
   idf:
     source:
       type: idf
@@ -38,8 +49,9 @@ dependencies:
     version: 8.3.11
 direct_dependencies:
 - espressif/esp_lcd_sh8601
+- espressif/mqtt
 - idf
 - lvgl/lvgl
-manifest_hash: e83274a60e051ae72165d2479525dee76a126771ec830ba51f9f4b2014811fab
+manifest_hash: 620bbf9aeb79f1a204e5ce06106246f4e38b5e3fd8fa9c5b76077420c9a17577
 target: esp32s3
 version: 2.0.0
