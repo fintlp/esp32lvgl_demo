@@ -1,0 +1,2 @@
+source /Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/gdbinit/symbols
+source /Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/gdbinit/connect

@@ -1,0 +1,13 @@
+{
+    "idf.openOcdConfigs": [
+        "board/esp32s3-builtin.cfg"
+    ],
+    "idf.portWin": "COM8",
+    "idf.flashType": "DFU",
+    "files.associations": {
+        "touch_bsp.h": "c",
+        "lv_demos.h": "c"
+    },
+    "idf.pythonInstallPath": "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3",
+    "idf.port": "/dev/tty.usbmodem1101"
+}

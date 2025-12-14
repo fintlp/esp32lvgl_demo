@@ -1,0 +1,13 @@
+# Target labels
+ bootloader
+# Source files and their labels
+/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/CMakeFiles/bootloader
+/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/CMakeFiles/bootloader.rule
+/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/CMakeFiles/bootloader-complete.rule
+/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule
+/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule
+/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule
+/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule
+/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule
+/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule
+/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule

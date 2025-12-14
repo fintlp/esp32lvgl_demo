@@ -1,0 +1,9 @@
+
+
+# Load bootloader symbols
+set confirm off
+    add-symbol-file /Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/bootloader/bootloader.elf
+set confirm on
+
+# Load application symbols
+file /Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp32lvgl_demo.elf
