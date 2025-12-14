@@ -369,6 +369,7 @@ void app_main(void)
         lv_obj_t * label_center1 = lv_label_create(btn_center1);
         lv_label_set_text(label_center1, "Play");
         lv_obj_center(label_center1);
+        lv_obj_set_style_text_font(label_center1, &lv_font_montserrat_16, 0);
         lv_obj_add_event_cb(btn_center1, play_pause_event_cb, LV_EVENT_CLICKED, NULL);
 
         // Top button: Volume +
@@ -378,6 +379,7 @@ void app_main(void)
         lv_obj_t * label_top1 = lv_label_create(btn_top1);
         lv_label_set_text(label_top1, "Volume +");
         lv_obj_center(label_top1);
+        lv_obj_set_style_text_font(label_top1, &lv_font_montserrat_16, 0);
 
         // Bottom button: Volume -
         lv_obj_t * btn_bottom1 = lv_btn_create(scr1);
@@ -386,6 +388,7 @@ void app_main(void)
         lv_obj_t * label_bottom1 = lv_label_create(btn_bottom1);
         lv_label_set_text(label_bottom1, "Volume -");
         lv_obj_center(label_bottom1);
+        lv_obj_set_style_text_font(label_bottom1, &lv_font_montserrat_16, 0);
 
         // Left button: <<
         lv_obj_t * btn_left1 = lv_btn_create(scr1);
@@ -394,6 +397,7 @@ void app_main(void)
         lv_obj_t * label_left1 = lv_label_create(btn_left1);
         lv_label_set_text(label_left1, "<<");
         lv_obj_center(label_left1);
+        lv_obj_set_style_text_font(label_left1, &lv_font_montserrat_16, 0);
 
         // Right button: >>
         lv_obj_t * btn_right1 = lv_btn_create(scr1);
@@ -402,6 +406,7 @@ void app_main(void)
         lv_obj_t * label_right1 = lv_label_create(btn_right1);
         lv_label_set_text(label_right1, ">>");
         lv_obj_center(label_right1);
+        lv_obj_set_style_text_font(label_right1, &lv_font_montserrat_16, 0);
 
         // Second screen: Steering wheel style
         // Center button for temperature
@@ -411,6 +416,7 @@ void app_main(void)
         lv_obj_t * label_center2 = lv_label_create(btn_center2);
         lv_label_set_text(label_center2, "25°C");
         lv_obj_center(label_center2);
+        lv_obj_set_style_text_font(label_center2, &lv_font_montserrat_16, 0);
 
         // Top button: +
         lv_obj_t * btn_top2 = lv_btn_create(scr2);
@@ -419,6 +425,7 @@ void app_main(void)
         lv_obj_t * label_top2 = lv_label_create(btn_top2);
         lv_label_set_text(label_top2, "+");
         lv_obj_center(label_top2);
+        lv_obj_set_style_text_font(label_top2, &lv_font_montserrat_16, 0);
 
         // Bottom button: -
         lv_obj_t * btn_bottom2 = lv_btn_create(scr2);
@@ -427,6 +434,7 @@ void app_main(void)
         lv_obj_t * label_bottom2 = lv_label_create(btn_bottom2);
         lv_label_set_text(label_bottom2, "-");
         lv_obj_center(label_bottom2);
+        lv_obj_set_style_text_font(label_bottom2, &lv_font_montserrat_16, 0);
 
         // Right button: Intensity
         lv_obj_t * btn_right2 = lv_btn_create(scr2);
@@ -435,6 +443,7 @@ void app_main(void)
         lv_obj_t * label_right2 = lv_label_create(btn_right2);
         lv_label_set_text(label_right2, "Intensity");
         lv_obj_center(label_right2);
+        lv_obj_set_style_text_font(label_right2, &lv_font_montserrat_16, 0);
 
         // Left button: (I) power
         lv_obj_t * btn_left2 = lv_btn_create(scr2);
@@ -443,6 +452,7 @@ void app_main(void)
         lv_obj_t * label_left2 = lv_label_create(btn_left2);
         lv_label_set_text(label_left2, "(I)");
         lv_obj_center(label_left2);
+        lv_obj_set_style_text_font(label_left2, &lv_font_montserrat_16, 0);
 
         // Add gesture events to screens
         lv_obj_add_event_cb(scr1, gesture_event_cb, LV_EVENT_GESTURE, NULL);
