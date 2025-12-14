@@ -14,6 +14,43 @@ This example shows how to use SPD1020, GC9B71 or SH8601 display driver from Comp
 
 This example uses the [esp_timer](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/esp_timer.html) to generate the ticks needed by LVGL and uses a dedicated task to run the `lv_timer_handler()`. Since the LVGL APIs are not thread-safe, this example uses a mutex which be invoked before the call of `lv_timer_handler()` and released after it. The same mutex needs to be used in other tasks and threads around every LVGL (lv_...) related function call and code. For more porting guides, please refer to [LVGL porting doc](https://docs.lvgl.io/master/porting/index.html).
 
+## Architecture Overview
+
+- **LVGL UI** lives in `main/example_qspi_with_ram.c`. The file builds three gesture‑navigable screens (media controls, HVAC controls, and Wi‑Fi/MQTT settings). A FreeRTOS mutex and queue guard all LVGL interactions so background tasks can post updates safely.
+- **Wi-Fi management** is encapsulated in `components/wifi_manager`, which initializes `esp_netif`, stores credentials in NVS, and raises connection/IP events to registered listeners. The settings screen writes new credentials that are persisted and automatically retried on reconnect.
+- **MQTT integration** is handled by `components/mqtt_manager`. It depends on the Wi-Fi manager, auto-connects to a configurable broker, publishes button actions (media/HVAC) and subscribes to temperature telemetry that is rendered on screen 2.
+- **Touch and LCD bring-up** remain modular (`touch_bsp`, `read_lcd_id_bsp`, `esp_lcd_sh8601`). The display driver is selected dynamically by probing the panel ID, so the rest of the UI code stays agnostic.
+- **Configuration** is driven by `sdkconfig.defaults` plus `main/idf_component.yml`. Wi-Fi and MQTT components are added via the ESP-IDF component manager, while LVGL stays vendored under `components/lvgl`.
+
+### High-Level Diagram
+
+```
+ ┌──────────────────────────────────────────────────────────────────────┐
+ │                          app_main (main/)                            │
+ │                                                                      │
+ │  ┌──────────────┐      ┌──────────────────────┐      ┌─────────────┐  │
+ │  │ LVGL Screens │◄────►│  UI Event Queue      │◄────►│ MQTT Manager│  │
+ │  │ (media/hvac/ │      │  (status + telemetry │      │ (button pub/│  │
+ │  │  settings)   │      │   updates)           │      │  temp sub)  │  │
+ │  └─────▲────────┘      └─────────▲────────────┘      └─────▲───────┘  │
+ │        │                         │                             │       │
+ │        │                ┌────────┴────────┐                    │       │
+ │        │                │ Wi-Fi Manager   │◄──────────────┐    │       │
+ │        │                │ (NVS creds,     │               │    │       │
+ │        │                │  connect events)│               │    │       │
+ │        │                └────────▲────────┘               │    │       │
+ │        │                         │                        │    │       │
+ │        │                         │                        │    │       │
+ │   ┌────┴─────┐       ┌───────────┴──────────┐        ┌────┴────┐ │
+ │   │ touch_bsp│       │ read_lcd_id_bsp      │        │ esp_lcd │ │
+ │   │ (FT3168) │       │ (panel detect)       │        │ driver   │ │
+ │   └────▲─────┘       └──────────▲───────────┘        └────▲────┘ │
+ │        │                        │                           │      │
+ │        └────────────┬───────────┴───────────┬───────────────┘      │
+ │                     │        ESP-IDF        │                      │
+ └──────────────────────────────────────────────────────────────────────┘
+```
+
 ## Touch controller
 
 In this example you can enable touch controller SPD2010 or CST816 connected via I2C.
