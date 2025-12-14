@@ -22,6 +22,7 @@ static const char *TAG = "example";
 static SemaphoreHandle_t lvgl_mux = NULL;
 static lv_obj_t * scr1 = NULL;
 static lv_obj_t * scr2 = NULL;
+static bool is_playing = false;
 
 #define LCD_HOST    SPI2_HOST
 
@@ -204,6 +205,18 @@ static void gesture_event_cb(lv_event_t * e) {
     }
 }
 
+static void play_pause_event_cb(lv_event_t * e) {
+    lv_obj_t * btn = lv_event_get_target(e);
+    lv_obj_t * label = lv_obj_get_child(btn, 0);
+    if (is_playing) {
+        lv_label_set_text(label, "Stop");
+        is_playing = false;
+    } else {
+        lv_label_set_text(label, "Play");
+        is_playing = true;
+    }
+}
+
 void app_main(void)
 {
     READ_LCD_ID = read_lcd_id();
@@ -349,13 +362,14 @@ void app_main(void)
         lv_obj_align(ac_bg2, LV_ALIGN_LEFT_MID, 20, 0);
 
         // First screen: Current layout
-        // Center button for temperature
+        // Center button for play/pause
         lv_obj_t * btn_center1 = lv_btn_create(scr1);
         lv_obj_set_size(btn_center1, 120, 80);
         lv_obj_align(btn_center1, LV_ALIGN_CENTER, 0, 0);
         lv_obj_t * label_center1 = lv_label_create(btn_center1);
-        lv_label_set_text(label_center1, "25°C");
+        lv_label_set_text(label_center1, "Play");
         lv_obj_center(label_center1);
+        lv_obj_add_event_cb(btn_center1, play_pause_event_cb, LV_EVENT_CLICKED, NULL);
 
         // Top button: Volume +
         lv_obj_t * btn_top1 = lv_btn_create(scr1);
