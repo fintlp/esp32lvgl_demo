@@ -1,10 +1,12 @@
 set(UI_SOURCES
     ui/ui.c
     ui/ui_Screen2.c
+    ui/ui_Screen4.c
     ui/ui_comp.c
     ui/ui_comp_bubble.c
     ui/ui_comp_hook.c
     ui/ui_helpers.c
+    ui/ui_img_logo_de_audi__png.c
     ui/ui_font_FontLarge.c
     ui/ui_font_FontVeryLarge.c
     ui/ui_font_FontVeryVeryLarge.c)

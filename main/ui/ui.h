@@ -29,6 +29,7 @@ extern "C" {
 
 ///////////////////// SCREENS ////////////////////
 #include "ui_Screen2.h"
+#include "ui_Screen4.h"
 
 ///////////////////// VARIABLES ////////////////////
 
@@ -36,6 +37,7 @@ extern "C" {
 LV_FONT_DECLARE( ui_font_FontLarge);
 LV_FONT_DECLARE( ui_font_FontVeryVeryLarge);
 LV_FONT_DECLARE( ui_font_FontVeryLarge);
+LV_IMG_DECLARE( ui_img_logo_de_audi__png);
 
 // UI INIT
 void ui_init(void);

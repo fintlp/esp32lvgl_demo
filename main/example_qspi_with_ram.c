@@ -46,6 +46,9 @@ static lv_obj_t *registered_screens[4] = {0};
 static size_t registered_screen_count = 0;
 static bool is_playing = false;
 static lv_obj_t *current_screen = NULL;
+static lv_timer_t *splash_timer = NULL;
+static lv_obj_t *splash_screen = NULL;
+static void splash_show_main(lv_timer_t *timer);
 
 #define MQTT_BUTTON_MEDIA_PLAY       "media/play"
 #define MQTT_BUTTON_MEDIA_VOLUME_UP  "media/volume_up"
@@ -57,6 +60,8 @@ static lv_obj_t *current_screen = NULL;
 #define MQTT_BUTTON_HVAC_POWER       "hvac/power"
 #define MQTT_BUTTON_HVAC_INTENSITY   "hvac/intensity"
 #define MQTT_BUTTON_HVAC_TEMP_SET    "hvac/temp_set"
+#define SPLASH_DISPLAY_TIME_MS       4000
+#define SPLASH_FADE_TIME_MS          500
 
 typedef enum {
     UI_EVENT_TEMPERATURE,
@@ -71,6 +76,8 @@ typedef struct {
 } ui_event_t;
 
 static void gesture_event_cb(lv_event_t * e);
+static void splash_timer_cb(lv_timer_t *timer);
+static void splash_show_main(lv_timer_t *timer);
 
 static void register_screen(lv_obj_t *screen)
 {
@@ -322,6 +329,40 @@ static void gesture_event_cb(lv_event_t * e) {
     } else if (dir == LV_DIR_RIGHT && index > 0) {
         current_screen = registered_screens[index - 1];
         lv_scr_load(current_screen);
+    }
+}
+
+static void splash_show_main(lv_timer_t *timer)
+{
+    (void)timer;
+    if (current_screen) {
+        lv_scr_load(current_screen);
+    }
+    if (splash_screen) {
+        ui_Screen4_screen_destroy();
+        splash_screen = NULL;
+    }
+    if (splash_timer) {
+        lv_timer_del(splash_timer);
+        splash_timer = NULL;
+    }
+}
+
+static void splash_timer_cb(lv_timer_t *timer)
+{
+    (void)timer;
+    if (splash_timer) {
+        lv_timer_del(splash_timer);
+        splash_timer = NULL;
+    }
+    if (splash_screen) {
+        lv_obj_fade_out(splash_screen, SPLASH_FADE_TIME_MS, 0);
+    }
+    splash_timer = lv_timer_create(splash_show_main, SPLASH_FADE_TIME_MS, NULL);
+    if (!splash_timer) {
+        splash_show_main(NULL);
+    } else {
+        lv_timer_set_repeat_count(splash_timer, 1);
     }
 }
 
@@ -580,6 +621,8 @@ void app_main(void)
     disp_drv.rotated = LV_DISP_ROT_270;
 #endif
     lv_disp_t *disp = lv_disp_drv_register(&disp_drv);
+    lv_disp_set_bg_color(disp, lv_color_black());
+    lv_disp_set_bg_opa(disp, LV_OPA_COVER);
 
     ESP_LOGI(TAG, "Install LVGL tick timer");
     // Tick interface for LVGL (using esp_timer to generate 2ms periodic event)
@@ -607,7 +650,18 @@ void app_main(void)
     // Lock the mutex due to the LVGL APIs are not thread-safe
     if (example_lvgl_lock(-1)) {
         
-        // Create screens for swipe navigation
+        bool splash_loaded = false;
+        if (!ui_Screen4) {
+            ui_Screen4_screen_init();
+        }
+        splash_screen = ui_Screen4;
+        if (splash_screen) {
+            lv_scr_load(splash_screen);
+            lv_obj_set_style_opa(splash_screen, LV_OPA_TRANSP, LV_PART_MAIN);
+            lv_obj_fade_in(splash_screen, SPLASH_FADE_TIME_MS, 0);
+            splash_loaded = true;
+        }
+        // Create screens for swipe navigation while splash is visible
         scr1 = lv_obj_create(NULL); // First screen
         scr2 = lv_obj_create(NULL); // Second screen (steering wheel style)
         scr_settings = lv_obj_create(NULL); // Third screen for settings
@@ -619,12 +673,12 @@ void app_main(void)
         }
 
         registered_screen_count = 0;
-        register_screen(scr1);
-        register_screen(scr2);
-        register_screen(scr_settings);
         if (scr_squareline) {
             register_screen(scr_squareline);
         }
+        register_screen(scr1);
+        register_screen(scr2);
+        register_screen(scr_settings);
 
         lv_obj_set_style_bg_color(scr1, lv_color_hex(0x000000), 0); // Black background
         lv_obj_set_style_bg_color(scr2, lv_color_hex(0x000000), 0); // Black background
@@ -822,9 +876,22 @@ void app_main(void)
         lv_obj_add_event_cb(settings_keyboard, keyboard_event_cb, LV_EVENT_ALL, NULL);
         lv_keyboard_set_textarea(settings_keyboard, NULL);
 
-        // Load first screen initially
-        current_screen = scr1;
-        lv_scr_load(scr1);
+        // Load splash screen first, then transition to main UI
+        current_screen = scr_squareline ? scr_squareline : scr1;
+        if (splash_screen && splash_loaded) {
+            if (splash_timer) {
+                lv_timer_del(splash_timer);
+                splash_timer = NULL;
+            }
+            splash_timer = lv_timer_create(splash_timer_cb, SPLASH_DISPLAY_TIME_MS, NULL);
+            if (splash_timer) {
+                lv_timer_set_repeat_count(splash_timer, 1);
+            } else {
+                splash_show_main(NULL);
+            }
+        } else {
+            lv_scr_load(current_screen);
+        }
 
         // Release the mutex
         example_lvgl_unlock();
