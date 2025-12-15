@@ -28,6 +28,7 @@
 #include "read_lcd_id_bsp.h"
 #include "wifi_manager.h"
 #include "mqtt_manager.h"
+#include "ui/ui.h"
 static const char *TAG = "example";
 static SemaphoreHandle_t lvgl_mux = NULL;
 static lv_obj_t * scr1 = NULL;
@@ -40,7 +41,8 @@ static lv_obj_t *ssid_input = NULL;
 static lv_obj_t *password_input = NULL;
 static lv_obj_t *settings_keyboard = NULL;
 static QueueHandle_t ui_event_queue = NULL;
-static lv_obj_t *registered_screens[3] = {0};
+static lv_obj_t * scr_squareline = NULL;
+static lv_obj_t *registered_screens[4] = {0};
 static size_t registered_screen_count = 0;
 static bool is_playing = false;
 static lv_obj_t *current_screen = NULL;
@@ -54,6 +56,7 @@ static lv_obj_t *current_screen = NULL;
 #define MQTT_BUTTON_HVAC_TEMP_DOWN   "hvac/temp_down"
 #define MQTT_BUTTON_HVAC_POWER       "hvac/power"
 #define MQTT_BUTTON_HVAC_INTENSITY   "hvac/intensity"
+#define MQTT_BUTTON_HVAC_TEMP_SET    "hvac/temp_set"
 
 typedef enum {
     UI_EVENT_TEMPERATURE,
@@ -442,6 +445,33 @@ static void mqtt_status_handler(bool connected, void *ctx)
                      0);
 }
 
+static void publish_squareline_temperature(int position)
+{
+    char payload[8];
+    if (position <= 0) {
+        strlcpy(payload, "LO", sizeof(payload));
+    } else if (position >= UI_TEMP_ARC_STEPS) {
+        strlcpy(payload, "HI", sizeof(payload));
+    } else {
+        int temp_tenths = UI_TEMP_MIN_TENTHS + position * UI_TEMP_STEP_TENTHS;
+        if (temp_tenths % 10 == 0) {
+            snprintf(payload, sizeof(payload), "%d", temp_tenths / 10);
+        } else {
+            snprintf(payload, sizeof(payload), "%d.%d", temp_tenths / 10, temp_tenths % 10);
+        }
+    }
+    mqtt_manager_publish_button_event(MQTT_BUTTON_HVAC_TEMP_SET, payload);
+}
+
+static void squareline_temp_event_cb(lv_event_t * e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) {
+        return;
+    }
+    lv_obj_t * slider = lv_event_get_target(e);
+    publish_squareline_temperature(lv_arc_get_value(slider));
+}
+
 void app_main(void)
 {
     READ_LCD_ID = read_lcd_id();
@@ -577,15 +607,24 @@ void app_main(void)
     // Lock the mutex due to the LVGL APIs are not thread-safe
     if (example_lvgl_lock(-1)) {
         
-        // Create three screens for swipe navigation
+        // Create screens for swipe navigation
         scr1 = lv_obj_create(NULL); // First screen
         scr2 = lv_obj_create(NULL); // Second screen (steering wheel style)
         scr_settings = lv_obj_create(NULL); // Third screen for settings
+        ui_init();
+        scr_squareline = ui_Screen2;
+        if (ui_TempSlider) {
+            lv_obj_add_event_cb(ui_TempSlider, squareline_temp_event_cb, LV_EVENT_VALUE_CHANGED, NULL);
+            publish_squareline_temperature(lv_arc_get_value(ui_TempSlider));
+        }
 
         registered_screen_count = 0;
         register_screen(scr1);
         register_screen(scr2);
         register_screen(scr_settings);
+        if (scr_squareline) {
+            register_screen(scr_squareline);
+        }
 
         lv_obj_set_style_bg_color(scr1, lv_color_hex(0x000000), 0); // Black background
         lv_obj_set_style_bg_color(scr2, lv_color_hex(0x000000), 0); // Black background

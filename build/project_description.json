@@ -1,7 +1,7 @@
 {
     "version":            "1.3",
     "project_name":       "esp32lvgl_demo",
-    "project_version":    "403af02-dirty",
+    "project_version":    "c3e1063-dirty",
     "project_path":       "/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo",
     "idf_path":           "/Users/Peter/esp/esp-idf",
     "build_dir":          "/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build",
@@ -1675,8 +1675,8 @@
             "managed_reqs": [ "espressif__esp_lcd_sh8601", "lvgl" ],
             "managed_priv_reqs": [ "espressif__mqtt" ],
             "file": "/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build/esp-idf/main/libmain.a",
-            "sources": [ "/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/main/example_qspi_with_ram.c" ],
-            "include_dirs": [ "." ]
+            "sources": [ "/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/main/example_qspi_with_ram.c", "/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/main/ui/ui.c", "/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/main/ui/ui_Screen2.c", "/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/main/ui/ui_comp.c", "/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/main/ui/ui_comp_bubble.c", "/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/main/ui/ui_comp_hook.c", "/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/main/ui/ui_helpers.c", "/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/main/ui/ui_font_FontLarge.c", "/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/main/ui/ui_font_FontVeryLarge.c", "/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/main/ui/ui_font_FontVeryVeryLarge.c" ],
+            "include_dirs": [ ".", "ui" ]
         },
         "mbedtls": {
             "alias": "idf::mbedtls",
@@ -3743,7 +3743,7 @@
             "priv_reqs": [ "driver", "espressif__mqtt" ],
             "managed_reqs": [ "espressif__esp_lcd_sh8601", "lvgl" ],
             "managed_priv_reqs": [ "espressif__mqtt" ],
-            "include_dirs": [ "." ]
+            "include_dirs": [ ".", "ui" ]
         },
         "lvgl": {
             "alias": "idf::lvgl",
