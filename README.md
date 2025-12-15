@@ -1,6 +1,8 @@
 Vehicle like UX for the ESP32 AMOLED, based on the ESP LVGL Demo Code
 added Wifi, MQTT functionality
 
+> **Need the big-picture write-up?** See `docs/system_overview.md` for the formal project brief (concept, hardware stack, architecture diagrams, and workflow notes).
+
 ## Architecture Overview
 
 - **LVGL UI** lives in `main/example_qspi_with_ram.c`. The file builds three gesture‑navigable screens (media controls, HVAC controls, and Wi‑Fi/MQTT settings). A FreeRTOS mutex and queue guard all LVGL interactions so background tasks can post updates safely.
