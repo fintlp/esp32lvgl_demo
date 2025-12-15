@@ -1,7 +1,7 @@
 {
     "version":            "1.3",
     "project_name":       "esp32lvgl_demo",
-    "project_version":    "36455ee-dirty",
+    "project_version":    "0ff9e33-dirty",
     "project_path":       "/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo",
     "idf_path":           "/Users/Peter/esp/esp-idf",
     "build_dir":          "/Users/Peter/Documents/Coding/esp32lvgl/esp32lvgl_demo/build",

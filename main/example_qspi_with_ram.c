@@ -67,6 +67,7 @@ typedef enum {
     UI_EVENT_TEMPERATURE,
     UI_EVENT_WIFI_STATUS,
     UI_EVENT_MQTT_STATUS,
+    UI_EVENT_TEMP_OUT,
 } ui_event_type_t;
 
 typedef struct {
@@ -135,6 +136,11 @@ static void handle_ui_event(const ui_event_t *event)
     case UI_EVENT_MQTT_STATUS:
         if (mqtt_status_value_label) {
             lv_label_set_text(mqtt_status_value_label, event->message);
+        }
+        break;
+    case UI_EVENT_TEMP_OUT:
+        if (ui_TempOut && event->message[0] != '\0') {
+            lv_label_set_text(ui_TempOut, event->message);
         }
         break;
     default:
@@ -474,7 +480,9 @@ static void mqtt_message_handler(const char *topic, const char *payload, void *c
 {
     (void)topic;
     (void)ctx;
-    float value = strtof(payload ? payload : "0", NULL);
+    const char *text = payload ? payload : "";
+    enqueue_ui_event(UI_EVENT_TEMP_OUT, text, 0);
+    float value = strtof(text, NULL);
     enqueue_ui_event(UI_EVENT_TEMPERATURE, NULL, value);
 }
 
@@ -522,6 +530,7 @@ void app_main(void)
     ESP_ERROR_CHECK(wifi_manager_init(NULL));
     ESP_ERROR_CHECK(wifi_manager_register_event_handler(app_wifi_event_handler, NULL));
     mqtt_manager_config_t mqtt_cfg = { 0 };
+    strlcpy(mqtt_cfg.temperature_sub_topic, "TempOut", sizeof(mqtt_cfg.temperature_sub_topic));
     ESP_ERROR_CHECK(mqtt_manager_init(&mqtt_cfg,
                                       mqtt_message_handler,
                                       NULL,
